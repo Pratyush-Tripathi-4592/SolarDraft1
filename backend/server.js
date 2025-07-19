@@ -11,6 +11,9 @@
   // Middleware
   app.use(cors());
   app.use(bodyParser.json());
+  const userRoutes = require('./routes/user');
+  app.use('/api/users', userRoutes);
+  
 
   // MongoDB Connection
   mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
