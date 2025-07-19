@@ -2,7 +2,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Landing from './pages/Landing';
 import AuthPage from './pages/Authpage';
-import ProfilePage from './pages/ProfilePage';
+import Profile from './pages/ProfilePage';
 // import './App.css';
 
 // Placeholder components for future development
@@ -52,6 +52,7 @@ function App() {
         {/* Main landing page */}
         <Route path="/" element={<Landing />} />
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/profile" element={<Profile />} />
         {/* <Route 
           path="/profile" 
           element={
