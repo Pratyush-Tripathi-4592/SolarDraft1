@@ -1,3 +1,8 @@
+PT-
 Combining login and register in single interface( basic ui banana hai, possibly typescript, tsx files)
 Acceptance side ka page, abhi sirf frontend
+check if web3.js pluggin is working on mac or not( ya fir ether.js or hardhat, pehle web3 try krna )
 Government side mei( check krna if it is working or not, pehle upar wale krne hai, uske baad check krenge)
+
+
+4V-
