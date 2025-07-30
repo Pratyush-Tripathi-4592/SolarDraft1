@@ -1,0 +1,3 @@
+Combining login and register in single interface( basic ui banana hai, possibly typescript, tsx files)
+Acceptance side ka page, abhi sirf frontend
+Government side mei( check krna if it is working or not, pehle upar wale krne hai, uske baad check krenge)
