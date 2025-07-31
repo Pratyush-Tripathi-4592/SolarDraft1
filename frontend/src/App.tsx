@@ -1,82 +1,113 @@
 
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Landing from './pages/Landing';
-import AuthPage from './pages/Authpage';
-import Profile from './pages/ProfilePage';
-// import './App.css';
+// import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+// import Landing from './pages/Landing';
+// import AuthPage from './pages/Authpage';
+// import Profile from './pages/ProfilePage';
+// // import './App.css';
 
-// Placeholder components for future development
-// const LoginPage = () => (
-//   <div style={{ 
-//     display: 'flex', 
-//     justifyContent: 'center', 
-//     alignItems: 'center', 
-//     height: '100vh',
-//     fontSize: '1.5rem',
-//     color: '#166534'
-//   }}>
-//     Login Page - Coming Soon
-//   </div>
-// );
+// // Placeholder components for future development
+// // const LoginPage = () => (
+// //   <div style={{ 
+// //     display: 'flex', 
+// //     justifyContent: 'center', 
+// //     alignItems: 'center', 
+// //     height: '100vh',
+// //     fontSize: '1.5rem',
+// //     color: '#166534'
+// //   }}>
+// //     Login Page - Coming Soon
+// //   </div>
+// // );
 
-// const UserAuth = () => (
-//   <div style={{ 
-//     display: 'flex', 
-//     justifyContent: 'center', 
-//     alignItems: 'center', 
-//     height: '100vh',
-//     fontSize: '1.5rem',
-//     color: '#166534'
-//   }}>
-//     User Authentication - Coming Soon
-//   </div>
-// );
+// // const UserAuth = () => (
+// //   <div style={{ 
+// //     display: 'flex', 
+// //     justifyContent: 'center', 
+// //     alignItems: 'center', 
+// //     height: '100vh',
+// //     fontSize: '1.5rem',
+// //     color: '#166534'
+// //   }}>
+// //     User Authentication - Coming Soon
+// //   </div>
+// // );
 
-// const Dashboard = () => (
-//   <div style={{ 
-//     display: 'flex', 
-//     justifyContent: 'center', 
-//     alignItems: 'center', 
-//     height: '100vh',
-//     fontSize: '1.5rem',
-//     color: '#166534'
-//   }}>
-//     Dashboard - Coming Soon
-//   </div>
-// );
+// // const Dashboard = () => (
+// //   <div style={{ 
+// //     display: 'flex', 
+// //     justifyContent: 'center', 
+// //     alignItems: 'center', 
+// //     height: '100vh',
+// //     fontSize: '1.5rem',
+// //     color: '#166534'
+// //   }}>
+// //     Dashboard - Coming Soon
+// //   </div>
+// // );
+
+// function App() {
+//   return (
+//     <Router>
+//       <Routes>
+//         {/* Main landing page */}
+//         <Route path="/" element={<Landing />} />
+//         <Route path="/auth" element={<AuthPage />} />
+//         <Route path="/profile" element={<Profile />} />
+//         {/* <Route 
+//           path="/profile" 
+//           element={
+//             isAuthenticated ? (
+//               <ProfilePage onLogout={() => setIsAuthenticated(false)} />
+//             ) : (
+//               <Navigate to="/auth" replace />
+//             )
+//           } 
+//         /> */}
+        
+//         {/* Authentication routes */}
+//         {/* <Route path="/login" element={<LoginPage />} />
+//         <Route path="/UserAuth" element={<UserAuth />} />
+//         <Route path="/register" element={<UserAuth />} /> */}
+        
+//         {/* Dashboard route */}
+//         {/* <Route path="/dashboard" element={<Dashboard />} /> */}
+        
+//         {/* Catch all route - redirect to home */}
+//         <Route path="*" element={<Navigate to="/" replace />} />
+//       </Routes>
+//     </Router>
+//   );
+// }
+
+// export default App;
+
+// frontend/src/App.js
+import React from 'react';
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import Register from './components/Register';
+import Login from './components/Login';
+import ProposeTransaction from './components/ProposeTransaction';
+import VerifyTransaction from './components/VerifyTransaction';
+import CompleteTransaction from './components/CompleteTransaction';
+import './App.css';
 
 function App() {
-  return (
-    <Router>
-      <Routes>
-        {/* Main landing page */}
-        <Route path="/" element={<Landing />} />
-        <Route path="/auth" element={<AuthPage />} />
-        <Route path="/profile" element={<Profile />} />
-        {/* <Route 
-          path="/profile" 
-          element={
-            isAuthenticated ? (
-              <ProfilePage onLogout={() => setIsAuthenticated(false)} />
-            ) : (
-              <Navigate to="/auth" replace />
-            )
-          } 
-        /> */}
-        
-        {/* Authentication routes */}
-        {/* <Route path="/login" element={<LoginPage />} />
-        <Route path="/UserAuth" element={<UserAuth />} />
-        <Route path="/register" element={<UserAuth />} /> */}
-        
-        {/* Dashboard route */}
-        {/* <Route path="/dashboard" element={<Dashboard />} /> */}
-        
-        {/* Catch all route - redirect to home */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
-  );
+    return (
+        <Router>
+            <div className="App">
+                <Switch>
+                    <Route path="/register" component={Register} />
+                    <Route path="/login" component={Login} />
+                    <Route path="/propose" component={ProposeTransaction} />
+                    <Route path="/verify" component={VerifyTransaction} />
+                    <Route path="/complete" component={CompleteTransaction} />
+                    <Route path="/" exact>
+                        <h1>Welcome to the Electricity Transaction System</h1>
+                    </Route>
+                </Switch>
+            </div>
+        </Router>
+    );
 }
 
 export default App;
