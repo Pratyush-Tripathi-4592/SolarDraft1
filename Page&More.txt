@@ -1,4 +1,6 @@
 PT-
+Thoda css ka dekh, if tailwind use krke alag file mei ho rha hai to
+
 Combining login and register in single interface( basic ui banana hai, possibly typescript, tsx files)
 Acceptance side ka page, abhi sirf frontend
 check if web3.js pluggin is working on mac or not( ya fir ether.js or hardhat, pehle web3 try krna )
