@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract ElectricityToken is ERC20, Ownable {
+contract ElectricityToken is ERC20, Ownable(msg.sender) {
     // Mapping to store electricity unit details (e.g., metadata, generation source)
     // For simplicity, we'll just use a basic ERC20 token representing units.
     // For unique units, consider ERC-721 or ERC-1155.
@@ -19,7 +19,11 @@ contract ElectricityToken is ERC20, Ownable {
     }
 
     // Function to allow a seller to transfer electricity units to a buyer
-    function transferUnits(address _from, address _to, uint256 _amount) public returns (bool) {
+    function transferUnits(
+        address _from,
+        address _to,
+        uint256 _amount
+    ) public returns (bool) {
         // Additional logic can be added here, e.g., checking if _from is a registered seller
         require(balanceOf(_from) >= _amount, "Insufficient balance");
         _transfer(_from, _to, _amount);

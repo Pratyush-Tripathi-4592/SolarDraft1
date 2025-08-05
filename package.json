@@ -1,0 +1,21 @@
+{
+  "name": "solardraft1",
+  "version": "1.0.0",
+  "description": "A decentralized platform for trading solar energy using blockchain technology.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pratyush-Tripathi-4592/SolarDraft1.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Pratyush-Tripathi-4592/SolarDraft1/issues"
+  },
+  "homepage": "https://github.com/Pratyush-Tripathi-4592/SolarDraft1#readme"
+}

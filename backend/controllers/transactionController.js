@@ -1,76 +1,276 @@
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
-const Web3 = require('web3');
+const { Web3 } = require('web3');
 const dotenv = require('dotenv');
 
 dotenv.config();
 
 const web3 = new Web3(process.env.BLOCKCHAIN_NODE_URL);
 const transactionManagerContract = new web3.eth.Contract(
-    require('../contracts/TransactionManager.json').abi,
+    require('../build/contracts/TransactionManager.json').abi,
     process.env.TRANSACTION_MANAGER_ADDRESS
 );
+
+exports.getTransactionStats = async (req, res) => {
+    try {
+        const stats = await Promise.all([
+            Transaction.countDocuments(),
+            Transaction.countDocuments({ status: 'pending' }),
+            Transaction.countDocuments({ status: 'completed' }),
+            Transaction.aggregate([
+                { $match: { status: 'completed' } },
+                { $group: { _id: null, totalUnits: { $sum: '$amount' } } }
+            ])
+        ]);
+
+        res.status(200).json({
+            totalTransactions: stats[0],
+            pendingTransactions: stats[1],
+            completedTransactions: stats[2],
+            totalUnits: stats[3][0]?.totalUnits || 0
+        });
+    } catch (error) {
+        console.error('Error fetching transaction stats:', error);
+        res.status(500).json({ message: 'Error fetching transaction statistics' });
+    }
+};
 
 exports.proposeTransaction = async (req, res) => {
     try {
         const { buyerId, amount, price } = req.body;
-        const sellerId = req.user.id; // Assuming user is authenticated
-        const seller = await User.findById(sellerId);
-        const buyer = await User.findById(buyerId);
+        const sellerId = req.user.id;
+
+        // Input validation
+        if (!buyerId || !amount || !price) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+
+        if (amount <= 0 || price <= 0) {
+            return res.status(400).json({ message: 'Amount and price must be positive values' });
+        }
+
+        // Fetch seller and buyer
+        const [seller, buyer] = await Promise.all([
+            User.findById(sellerId),
+            User.findById(buyerId)
+        ]);
 
         if (!seller || !buyer) {
             return res.status(404).json({ message: 'Seller or Buyer not found' });
         }
 
-        const transaction = new Transaction({ seller: sellerId, buyer: buyerId, amount, price });
-        await transaction.save();
+        if (buyer.role !== 'buyer') {
+            return res.status(400).json({ message: 'Selected user is not a buyer' });
+        }
+
+        // Create transaction
+        const transaction = new Transaction({
+            seller: sellerId,
+            buyer: buyerId,
+            amount,
+            price,
+            status: 'pending',
+            timestamp: new Date()
+        });
 
         // Interact with smart contract
-        const tx = await transactionManagerContract.methods.proposeTransaction(
-            buyer.blockchainAddress,
-            amount,
-            price
-        ).send({ from: seller.blockchainAddress });
+        try {
+            const tx = await transactionManagerContract.methods.proposeTransaction(
+                buyer.blockchainAddress,
+                web3.utils.toWei(amount.toString(), 'ether'),
+                web3.utils.toWei(price.toString(), 'ether')
+            ).send({
+                from: seller.blockchainAddress,
+                gas: 200000
+            });
 
-        res.status(200).json({ message: 'Transaction proposed', transactionId: transaction._id, transactionHash: tx.transactionHash });
+            transaction.blockchainTxHash = tx.transactionHash;
+            await transaction.save();
+
+            res.status(201).json({
+                message: 'Transaction proposed successfully',
+                transactionId: transaction._id,
+                blockchainTxHash: tx.transactionHash
+            });
+        } catch (blockchainError) {
+            console.error('Blockchain error:', blockchainError);
+            res.status(500).json({
+                message: 'Error while processing blockchain transaction',
+                error: blockchainError.message
+            });
+        }
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Server error:', error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 };
 
 exports.verifyTransaction = async (req, res) => {
     try {
         const { transactionId, approved } = req.body;
-        const transaction = await Transaction.findById(transactionId);
+
+        // Input validation
+        if (!transactionId || approved === undefined) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+
+        // Find and validate transaction
+        const transaction = await Transaction.findById(transactionId)
+            .populate('seller', 'blockchainAddress')
+            .populate('buyer', 'blockchainAddress');
+
         if (!transaction) {
             return res.status(404).json({ message: 'Transaction not found' });
         }
 
-        const tx = await transactionManagerContract.methods.verifyPayment(transactionId, approved).send({ from: process.env.GOVERNMENT_ADDRESS });
-        transaction.governmentVerified = approved;
-        transaction.status = approved ? 'Approved' : 'Rejected';
-        await transaction.save();
+        if (transaction.status !== 'pending') {
+            return res.status(400).json({ message: 'Transaction is not in pending state' });
+        }
 
-        res.status(200).json({ message: 'Transaction verified', transactionHash: tx.transactionHash });
+        // Verify on blockchain
+        try {
+            const tx = await transactionManagerContract.methods
+                .verifyTransaction(
+                    transaction.blockchainTxHash,
+                    approved
+                )
+                .send({
+                    from: process.env.GOVERNMENT_ADDRESS,
+                    gas: 200000
+                });
+
+            // Update transaction status
+            transaction.governmentVerified = approved;
+            transaction.status = approved ? 'approved' : 'rejected';
+            transaction.verificationTime = new Date();
+            transaction.verificationTxHash = tx.transactionHash;
+            await transaction.save();
+
+            // Notify users (you could implement WebSocket notifications here)
+            
+            res.status(200).json({
+                message: `Transaction ${approved ? 'approved' : 'rejected'} successfully`,
+                transactionId: transaction._id,
+                blockchainTxHash: tx.transactionHash
+            });
+        } catch (blockchainError) {
+            console.error('Blockchain error:', blockchainError);
+            res.status(500).json({
+                message: 'Error while processing blockchain verification',
+                error: blockchainError.message
+            });
+        }
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Server error:', error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 };
 
 exports.completeTransaction = async (req, res) => {
     try {
         const { transactionId } = req.body;
-        const transaction = await Transaction.findById(transactionId);
-        if (!transaction || transaction.status !== 'Approved') {
-            return res.status(400).json({ message: 'Transaction not approved or not found' });
+        const buyerId = req.user.id;
+
+        // Input validation
+        if (!transactionId) {
+            return res.status(400).json({ message: 'Transaction ID is required' });
         }
 
-        const tx = await transactionManagerContract.methods.completeTransaction(transactionId).send({ from: transaction.buyer.blockchainAddress });
-        transaction.status = 'Completed';
-        await transaction.save();
+        // Find and validate transaction
+        const transaction = await Transaction.findById(transactionId)
+            .populate('seller', 'blockchainAddress username')
+            .populate('buyer', 'blockchainAddress username');
 
-        res.status(200).json({ message: 'Transaction completed', transactionHash: tx.transactionHash });
+        if (!transaction) {
+            return res.status(404).json({ message: 'Transaction not found' });
+        }
+
+        if (transaction.buyer._id.toString() !== buyerId) {
+            return res.status(403).json({ message: 'Unauthorized to complete this transaction' });
+        }
+
+        if (transaction.status !== 'approved') {
+            return res.status(400).json({ message: 'Transaction must be approved before completion' });
+        }
+
+        // Complete transaction on blockchain
+        try {
+            const tx = await transactionManagerContract.methods
+                .completeTransaction(
+                    transaction.blockchainTxHash,
+                    transaction.seller.blockchainAddress,
+                    web3.utils.toWei(transaction.price.toString(), 'ether')
+                )
+                .send({
+                    from: transaction.buyer.blockchainAddress,
+                    value: web3.utils.toWei(transaction.price.toString(), 'ether'),
+                    gas: 300000
+                });
+
+            // Update transaction status
+            transaction.status = 'completed';
+            transaction.completionTime = new Date();
+            transaction.completionTxHash = tx.transactionHash;
+            await transaction.save();
+
+            // Update electricity token balances (if you're tracking them)
+            // You could implement token transfer here
+
+            res.status(200).json({
+                message: 'Transaction completed successfully',
+                transactionId: transaction._id,
+                blockchainTxHash: tx.transactionHash
+            });
+        } catch (blockchainError) {
+            console.error('Blockchain error:', blockchainError);
+            res.status(500).json({
+                message: 'Error while processing blockchain transaction',
+                error: blockchainError.message
+            });
+        }
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Server error:', error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+};
+
+exports.getPendingTransactions = async (req, res) => {
+    try {
+        const pendingTransactions = await Transaction.find({ status: 'pending' })
+            .populate('seller', 'username')
+            .populate('buyer', 'username')
+            .select('-blockchainTxHash -__v')
+            .sort('-timestamp');
+
+        res.status(200).json(pendingTransactions);
+    } catch (error) {
+        console.error('Error fetching pending transactions:', error);
+        res.status(500).json({ message: 'Error fetching pending transactions' });
+    }
+};
+
+exports.getUserTransactions = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        let query = {};
+        if (userRole === 'seller') {
+            query.seller = userId;
+        } else if (userRole === 'buyer') {
+            query.buyer = userId;
+        }
+        // Government users can see all transactions
+
+        const transactions = await Transaction.find(query)
+            .populate('seller', 'username')
+            .populate('buyer', 'username')
+            .select('-blockchainTxHash -__v')
+            .sort('-timestamp');
+
+        res.status(200).json(transactions);
+    } catch (error) {
+        console.error('Error fetching user transactions:', error);
+        res.status(500).json({ message: 'Error fetching transactions' });
     }
 };
