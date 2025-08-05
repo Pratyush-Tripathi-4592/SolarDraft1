@@ -23,12 +23,13 @@ exports.register = async (req, res) => {
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        // Create new user
+        // Create new user with blockchain address
         const user = new User({ 
             username, 
             email, 
             role, 
-            passwordHash: hashedPassword 
+            passwordHash: hashedPassword,
+            blockchainAddress: req.body.blockchainAddress // Add blockchain address
         });
         
         await user.save();
