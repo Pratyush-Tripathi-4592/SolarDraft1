@@ -274,3 +274,39 @@ exports.getUserTransactions = async (req, res) => {
         res.status(500).json({ message: 'Error fetching transactions' });
     }
 };
+
+exports.getTransactionById = async (req, res) => {
+    try {
+        const tx = await Transaction.findById(req.params.id)
+            .populate('seller', 'username blockchainAddress')
+            .populate('buyer', 'username blockchainAddress')
+            .select('-__v');
+
+        if (!tx) return res.status(404).json({ message: 'Transaction not found' });
+        res.status(200).json(tx);
+    } catch (error) {
+        console.error('Error fetching transaction by id:', error);
+        res.status(500).json({ message: 'Error fetching transaction' });
+    }
+};
+
+// Called by frontend after MetaMask on-chain completeTransaction returns
+exports.markCompletedFromFrontend = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { transactionHash } = req.body;
+
+        const transaction = await Transaction.findById(id);
+        if (!transaction) return res.status(404).json({ message: 'Transaction not found' });
+
+        transaction.status = 'completed';
+        transaction.completionTxHash = transactionHash;
+        transaction.completionTime = new Date();
+        await transaction.save();
+
+        res.status(200).json({ message: 'Transaction marked completed', transactionId: id });
+    } catch (error) {
+        console.error('Error marking transaction completed:', error);
+        res.status(500).json({ message: 'Error updating transaction' });
+    }
+};
