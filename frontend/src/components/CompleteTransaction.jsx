@@ -1,14 +1,14 @@
 // frontend/src/components/CompleteTransaction.js
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useWeb3 } from './Web3Context'; // Assuming you have a Web3 context provider
+import { useWeb3 } from './Web3Context';
 
 const CompleteTransaction = () => {
     const [transactionId, setTransactionId] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const { web3, account } = useWeb3(); // Get web3 instance and connected account
+    const { web3, account, connect, loadContract } = useWeb3(); // web3 helpers
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -17,41 +17,50 @@ const CompleteTransaction = () => {
         setSuccess('');
 
         try {
-            // Step 1: Get transaction details from backend
-            const transactionRes = await axios.get(`http://localhost:5000/api/transactions/${transactionId}`);
-            const { amount, price, seller, status } = transactionRes.data;
+            // Ensure web3/account connected
+            let acct = account;
+            if (!acct) {
+                await connect();
+                acct = (await web3.eth.getAccounts())[0];
+            }
 
-            // Validation checks
-            if (status !== 'Approved') {
+            // Step 1: Get transaction details from backend
+            const transactionRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/transactions/${transactionId}`);
+            const txData = transactionRes.data;
+            const { amount, price, seller, status } = txData;
+
+            // Validation checks (backend stores statuses lowercased sometimes)
+            if (!status || status.toLowerCase() !== 'approved') {
                 throw new Error('Transaction must be approved by government before completion');
             }
 
-            // Calculate total price in wei (assuming price is per unit in ETH)
-            const totalPriceWei = web3.utils.toWei((amount * price).toString(), 'ether');
+            // Calculate total price in wei (price assumed in ETH per unit)
+            const totalEth = (Number(amount) * Number(price));
+            const totalPriceWei = web3.utils.toWei(totalEth.toString(), 'ether');
 
-            // Step 2: Call blockchain contract to complete transaction
-            const transactionManagerContract = new web3.eth.Contract(
-                TransactionManagerABI, // Import your contract ABI
-                process.env.REACT_APP_TRANSACTION_MANAGER_ADDRESS
-            );
+            // Step 2: Fetch ABI from backend and load contract
+            const abiRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/transactions/abi/transactionManager`);
+            const abi = abiRes.data.abi;
+            const contractAddress = import.meta.env.VITE_TRANSACTION_MANAGER_ADDRESS;
+            const contract = loadContract(abi, contractAddress);
 
-            const tx = await transactionManagerContract.methods
-                .completeTransaction(transactionId)
-                .send({
-                    from: account,
-                    value: totalPriceWei,
-                    gas: 500000 // Adjust gas limit as needed
-                });
-
-            // Step 3: Update backend status
-            await axios.put(`http://localhost:5000/api/transactions/${transactionId}/complete`, {
-                transactionHash: tx.transactionHash
+            // Call completeTransaction via MetaMask (this will open MetaMask popup)
+            const receipt = await contract.methods.completeTransaction(Number(transactionId)).send({
+                from: acct,
+                value: totalPriceWei
             });
 
-            setSuccess(`Transaction completed successfully! Tx Hash: ${tx.transactionHash}`);
+            // Step 3: Notify backend that transaction completed on-chain
+            await axios.put(`${import.meta.env.VITE_API_BASE_URL}/transactions/${transactionId}/complete`, {
+                transactionHash: receipt.transactionHash
+            }, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+
+            setSuccess(`Transaction completed successfully! Tx Hash: ${receipt.transactionHash}`);
         } catch (err) {
             console.error('Transaction completion error:', err);
-            setError(err.message || 'Failed to complete transaction');
+            setError(err.response?.data?.message || err.message || 'Failed to complete transaction');
         } finally {
             setLoading(false);
         }
