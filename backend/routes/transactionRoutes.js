@@ -13,17 +13,33 @@ router.get('/:id', authenticateToken, transactionController.getTransactionById);
 
 // ABI endpoint for frontend to fetch contract ABI
 router.get('/abi/transactionManager', (req, res) => {
+	// Returns ABI and bytecode for a requested contract. Query param: ?contract=TransactionManager|ElectricityToken
+	const contractName = req.query.contract || 'TransactionManager';
+	const candidates = [
+		`../../backend/build/contracts/${contractName}.json`,
+		`../build/contracts/${contractName}.json`,
+		`../../backend/build/contracts/TransactionManager.json`,
+		`../build/contracts/TransactionManager.json`
+	];
 	try {
-		const abi = require('../../backend/build/contracts/TransactionManager.json').abi || require('../build/contracts/TransactionManager.json').abi;
-		res.json({ abi });
-	} catch (err) {
-		// fallback to build folder
-		try {
-			const abi = require('../build/contracts/TransactionManager.json').abi;
-			res.json({ abi });
-		} catch (error) {
-			res.status(500).json({ message: 'ABI not found on server' });
+		let json = null;
+		for (const path of candidates) {
+			try {
+				// eslint-disable-next-line global-require, import/no-dynamic-require
+				json = require(path);
+				if (json) break;
+			} catch (e) {
+				// ignore and try next
+			}
 		}
+		if (!json) return res.status(500).json({ message: 'Contract artifact not found on server' });
+
+		// Some build artifacts place bytecode under 'bytecode' or 'deployedBytecode'
+		const abi = json.abi;
+		const bytecode = json.bytecode || json.deployedBytecode || null;
+		res.json({ abi, bytecode });
+	} catch (err) {
+		res.status(500).json({ message: 'ABI not found on server', error: err.message });
 	}
 });
 

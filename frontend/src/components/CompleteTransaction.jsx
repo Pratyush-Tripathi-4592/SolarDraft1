@@ -38,26 +38,43 @@ const CompleteTransaction = () => {
             const totalEth = (Number(amount) * Number(price));
             const totalPriceWei = web3.utils.toWei(totalEth.toString(), 'ether');
 
-            // Step 2: Fetch ABI from backend and load contract
-            const abiRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/transactions/abi/transactionManager`);
-            const abi = abiRes.data.abi;
-            const contractAddress = import.meta.env.VITE_TRANSACTION_MANAGER_ADDRESS;
-            const contract = loadContract(abi, contractAddress);
+            // Step 2: Fetch TransactionManager ABI and call completeTransaction (MetaMask popup)
+            const tmAbiRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/transactions/abi/transactionManager?contract=TransactionManager`);
+            const tmAbi = tmAbiRes.data.abi;
+            const tmAddress = import.meta.env.VITE_TRANSACTION_MANAGER_ADDRESS;
+            const tmContract = loadContract(tmAbi, tmAddress);
 
-            // Call completeTransaction via MetaMask (this will open MetaMask popup)
-            const receipt = await contract.methods.completeTransaction(Number(transactionId)).send({
+            const receipt = await tmContract.methods.completeTransaction(Number(transactionId)).send({
                 from: acct,
                 value: totalPriceWei
             });
 
-            // Step 3: Notify backend that transaction completed on-chain
+            // After completion, optionally deploy an ElectricityToken contract (example flow)
+            // Fetch ElectricityToken ABI+bytecode from backend
+            const etRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/transactions/abi/transactionManager?contract=ElectricityToken`);
+            const etAbi = etRes.data.abi;
+            const etBytecode = etRes.data.bytecode;
+
+            let deployedAddress = null;
+            if (etBytecode) {
+                // Use web3 to deploy via MetaMask (this opens a MetaMask deploy popup)
+                const deployContract = new web3.eth.Contract(etAbi);
+                const deployTx = deployContract.deploy({ data: etBytecode, arguments: ['ElectricityToken', 'ELT'] });
+
+                const gas = await deployTx.estimateGas({ from: acct });
+                const deployed = await deployTx.send({ from: acct, gas });
+                deployedAddress = deployed.options.address;
+            }
+
+            // Step 3: Notify backend that transaction completed on-chain and provide deployed contract address
             await axios.put(`${import.meta.env.VITE_API_BASE_URL}/transactions/${transactionId}/complete`, {
-                transactionHash: receipt.transactionHash
+                transactionHash: receipt.transactionHash,
+                deployedContractAddress: deployedAddress
             }, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
 
-            setSuccess(`Transaction completed successfully! Tx Hash: ${receipt.transactionHash}`);
+            setSuccess(`Transaction completed successfully! Tx Hash: ${receipt.transactionHash}${deployedAddress ? `, Deployed contract: ${deployedAddress}` : ''}`);
         } catch (err) {
             console.error('Transaction completion error:', err);
             setError(err.response?.data?.message || err.message || 'Failed to complete transaction');

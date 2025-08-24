@@ -299,10 +299,11 @@ exports.markCompletedFromFrontend = async (req, res) => {
         const transaction = await Transaction.findById(id);
         if (!transaction) return res.status(404).json({ message: 'Transaction not found' });
 
-        transaction.status = 'completed';
-        transaction.completionTxHash = transactionHash;
-        transaction.completionTime = new Date();
-        await transaction.save();
+    transaction.status = 'completed';
+    if (transactionHash) transaction.completionTxHash = transactionHash;
+    if (req.body.deployedContractAddress) transaction.deployedContractAddress = req.body.deployedContractAddress;
+    transaction.completionTime = new Date();
+    await transaction.save();
 
         res.status(200).json({ message: 'Transaction marked completed', transactionId: id });
     } catch (error) {
