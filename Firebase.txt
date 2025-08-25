@@ -1,0 +1,25 @@
+npm install firebase
+
+I am thinking to use firebase, instead of mongo, there is some issue in my local env setup
+
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBcgzF3ukxEx-hHslLVlXjApGwq_OmCv_Y",
+  authDomain: "solardraft1.firebaseapp.com",
+  projectId: "solardraft1",
+  storageBucket: "solardraft1.firebasestorage.app",
+  messagingSenderId: "345916864197",
+  appId: "1:345916864197:web:e114f9621c212a46b662ac",
+  measurementId: "G-1BR4Y8VBM4"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
