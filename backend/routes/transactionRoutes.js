@@ -12,6 +12,7 @@ router.get('/user', authenticateToken, transactionController.getUserTransactions
 router.get('/:id', authenticateToken, transactionController.getTransactionById);
 
 // ABI endpoint for frontend to fetch contract ABI
+//abi is fetched from .env variable
 router.get('/abi/transactionManager', (req, res) => {
 	// Returns ABI and bytecode for a requested contract. Query param: ?contract=TransactionManager|ElectricityToken
 	const contractName = req.query.contract || 'TransactionManager';

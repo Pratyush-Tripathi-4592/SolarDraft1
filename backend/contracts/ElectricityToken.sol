@@ -8,7 +8,7 @@ contract ElectricityToken is ERC20, Ownable(msg.sender) {
     // Mapping to store electricity unit details (e.g., metadata, generation source)
     // For simplicity, we'll just use a basic ERC20 token representing units.
     // For unique units, consider ERC-721 or ERC-1155.
-
+    // For unique units, consider ERC-721 or ERC-1155.
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {
         // Mint initial tokens or allow only specific entities to mint
     }

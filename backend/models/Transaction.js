@@ -1,6 +1,7 @@
 // backend/models/Transaction.js
 const mongoose = require('mongoose');
 
+//basic inputs consideration
 const transactionSchema = new mongoose.Schema({
     seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     buyer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

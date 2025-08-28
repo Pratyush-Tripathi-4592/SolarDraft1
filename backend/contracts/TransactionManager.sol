@@ -152,6 +152,6 @@ contract TransactionManager is Ownable(msg.sender) {
         emit TransactionCompleted(_transactionId);
     }
 
-    // Fallback function to receive Ether
+    // Fallback func to receive Ether
     receive() external payable {}
 }
