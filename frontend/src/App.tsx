@@ -1,11 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Register from 'frontend/src/components/Register.jsx';
-import Login from 'frontend/src/components/Login.jsx';
-import ProposeTransaction from 'frontedn/src/components/ProposeTransaction.jsx';
-import VerifyTransaction from 'frontend/src/components/VerifyTransaction.jsx';
-import CompleteTransaction from 'frontend/src/components/CompleteTransaction.jsx';
-import Dashboard from 'frontend/src/components/Dashboard.jsx';
+import Register from '@/components/Register.jsx';
+import Login from '@/components/Login.jsx';
+import ProposeTransaction from '@/components/ProposeTransaction.jsx';
+import VerifyTransaction from '@/components/VerifyTransaction.jsx';
+import CompleteTransaction from '@/components/CompleteTransaction.jsx';
+import Dashboard from '@/components/Dashboard.jsx';
 import './App.css';
 
 const App = () => {

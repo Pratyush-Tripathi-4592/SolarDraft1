@@ -9,6 +9,7 @@ Pratyush - I wanted to have 3 sides of this application,
 - last is buyer side which buys the electricity units, 
 - All this transaction happens through blockchain, and a smart contract is deployed whenenver the transaction is completed. 
 - A pop up comes, which directly redirects to metamask, and there the contract gets deployed. 
+( install metamask extension in chrome )
 
 Seller and buyer side= name, email,contact, transaction id, connection number, state and city of electricity supplier( in future, we can add map, *probabily secondary phase of project)
 
