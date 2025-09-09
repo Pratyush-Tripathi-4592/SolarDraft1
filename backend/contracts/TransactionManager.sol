@@ -48,6 +48,7 @@ contract TransactionManager is Ownable(msg.sender) {
         bool approved
     );
     event TransactionCompleted(uint256 indexed transactionId);
+    event ContractDeployed(uint256 indexed transactionId, address contractAddress);
 
     constructor(address _electricityTokenAddress) {
         electricityToken = ElectricityToken(_electricityTokenAddress);
@@ -107,17 +108,17 @@ contract TransactionManager is Ownable(msg.sender) {
             msg.sender == governmentVerifier,
             "Only the government verifier can verify payments"
         );
-        ElectricityTransaction storage tx = transactions[_transactionId];
+        ElectricityTransaction storage txData = transactions[_transactionId];
         require(
-            tx.status == TransactionStatus.Pending,
+            txData.status == TransactionStatus.Pending,
             "Transaction is not pending verification"
         );
 
-        tx.governmentVerified = _approved;
+        txData.governmentVerified = _approved;
         if (_approved) {
-            tx.status = TransactionStatus.Approved;
+            txData.status = TransactionStatus.Approved;
         } else {
-            tx.status = TransactionStatus.Rejected;
+            txData.status = TransactionStatus.Rejected;
         }
         emit TransactionVerified(_transactionId, msg.sender, _approved);
     }
@@ -128,28 +129,69 @@ contract TransactionManager is Ownable(msg.sender) {
             isBuyer[msg.sender],
             "Only registered buyers can complete transactions"
         );
-        ElectricityTransaction storage tx = transactions[_transactionId];
+        ElectricityTransaction storage txData = transactions[_transactionId];
         require(
-            tx.buyer == msg.sender,
+            txData.buyer == msg.sender,
             "You are not the buyer for this transaction"
         );
         require(
-            tx.status == TransactionStatus.Approved,
+            txData.status == TransactionStatus.Approved,
             "Transaction not approved by government"
         );
-        require(msg.value == tx.amount * tx.price, "Incorrect payment amount");
+        require(msg.value == txData.amount * txData.price, "Incorrect payment amount");
 
         // Transfer electricity units from seller to buyer
         require(
-            electricityToken.transferFrom(tx.seller, tx.buyer, tx.amount),
+            electricityToken.transferFrom(txData.seller, txData.buyer, txData.amount),
             "Electricity unit transfer failed"
         );
 
         // Transfer payment (Ether/Native currency) from buyer to seller
-        payable(tx.seller).transfer(msg.value);
+        payable(txData.seller).transfer(msg.value);
 
-        tx.status = TransactionStatus.Completed;
+        txData.status = TransactionStatus.Completed;
         emit TransactionCompleted(_transactionId);
+    }
+
+    // Get transaction details
+    function getTransaction(uint256 _transactionId) public view returns (
+        address seller,
+        address buyer,
+        uint256 amount,
+        uint256 price,
+        TransactionStatus status,
+        bool governmentVerified
+    ) {
+        ElectricityTransaction storage txData = transactions[_transactionId];
+        return (
+            txData.seller,
+            txData.buyer,
+            txData.amount,
+            txData.price,
+            txData.status,
+            txData.governmentVerified
+        );
+    }
+
+    // Get all transactions for a user
+    function getUserTransactions(address user) public view returns (uint256[] memory) {
+        uint256[] memory userTxs = new uint256[](nextTransactionId);
+        uint256 count = 0;
+        
+        for (uint256 i = 0; i < nextTransactionId; i++) {
+            if (transactions[i].seller == user || transactions[i].buyer == user) {
+                userTxs[count] = i;
+                count++;
+            }
+        }
+        
+        // Resize array to actual count
+        uint256[] memory result = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            result[i] = userTxs[i];
+        }
+        
+        return result;
     }
 
     // Fallback func to receive Ether

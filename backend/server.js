@@ -5,6 +5,10 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const userRoutes = require('./routes/userRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
+const sellerRoutes = require('./routes/sellerRoutes');
+const buyerRoutes = require('./routes/buyerRoutes');
+const governmentRoutes = require('./routes/governmentRoutes');
+const blockchainRoutes = require('./routes/blockchainRoutes');
 
 dotenv.config();
 
@@ -43,6 +47,10 @@ mongoose.connect(process.env.MONGODB_URI, {
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/seller', sellerRoutes);
+app.use('/api/buyer', buyerRoutes);
+app.use('/api/government', governmentRoutes);
+app.use('/api/blockchain', blockchainRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
