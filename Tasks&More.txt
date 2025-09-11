@@ -17,6 +17,7 @@ Major API usage- Metamask( tension nakko, i'll elaborate it)
 
 Lib- Web3.js, Ether.js, Ethereum for contract deployement
 
+deployement is done at the time of submit button
 
 
 
