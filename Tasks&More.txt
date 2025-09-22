@@ -3,7 +3,7 @@ Olivia-
 
 
 
-Pratyush - I wanted to have 3 sides of this application, 
+Pratyush - I want to have 3 sides of this application, 
 - One is Seller side( the person who has some electricity units or tokens stored in meter), 
 - One is government side who only approves the transaction , 
 - last is buyer side which buys the electricity units, 
