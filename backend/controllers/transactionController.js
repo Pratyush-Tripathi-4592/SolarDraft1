@@ -2,14 +2,11 @@ const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 const { Web3 } = require('web3');
 const dotenv = require('dotenv');
+const blockchainService = require('../services/blockchainService');
 
 dotenv.config();
 
 const web3 = new Web3(process.env.BLOCKCHAIN_NODE_URL);
-const transactionManagerContract = new web3.eth.Contract(
-    require('../build/contracts/TransactionManager.json').abi,
-    process.env.TRANSACTION_MANAGER_ADDRESS
-);
 
 exports.getTransactionStats = async (req, res) => {
     try {
@@ -38,7 +35,7 @@ exports.getTransactionStats = async (req, res) => {
 exports.proposeTransaction = async (req, res) => {
     try {
         const { buyerId, amount, price } = req.body;
-        const sellerId = req.user.id;
+        const sellerId = req.user.userId;
 
         // Input validation
         if (!buyerId || !amount || !price) {
@@ -169,7 +166,7 @@ exports.verifyTransaction = async (req, res) => {
 exports.completeTransaction = async (req, res) => {
     try {
         const { transactionId } = req.body;
-        const buyerId = req.user.id;
+        const buyerId = req.user.userId;
 
         // Input validation
         if (!transactionId) {
@@ -195,22 +192,21 @@ exports.completeTransaction = async (req, res) => {
 
         // Complete transaction on blockchain
         try {
-            const tx = await transactionManagerContract.methods
-                .completeTransaction(
-                    transaction.blockchainTxHash,
-                    transaction.seller.blockchainAddress,
-                    web3.utils.toWei(transaction.price.toString(), 'ether')
-                )
-                .send({
-                    from: transaction.buyer.blockchainAddress,
-                    value: web3.utils.toWei(transaction.price.toString(), 'ether'),
-                    gas: 300000
-                });
+            // Deploy Trade.sol on purchase completion path if not already deployed
+            const priceWei = web3.utils.toWei((transaction.price || transaction.totalAmount || 0).toString(), 'ether');
+            const deployer = transaction.buyer.blockchainAddress;
+            const deployment = await blockchainService.deployTradeContract({
+                seller: transaction.seller.blockchainAddress,
+                buyer: transaction.buyer.blockchainAddress,
+                units: transaction.units || transaction.unitsRequested || 0,
+                priceWei,
+                from: deployer
+            });
 
-            // Update transaction status
             transaction.status = 'completed';
-            transaction.completionTime = new Date();
-            transaction.completionTxHash = tx.transactionHash;
+            transaction.completedAt = new Date();
+            transaction.deployedContractAddress = deployment.contractAddress;
+            transaction.completionTxHash = deployment.transactionHash;
             await transaction.save();
 
             // Update electricity token balances (if you're tracking them)
@@ -219,7 +215,8 @@ exports.completeTransaction = async (req, res) => {
             res.status(200).json({
                 message: 'Transaction completed successfully',
                 transactionId: transaction._id,
-                blockchainTxHash: tx.transactionHash
+                blockchainTxHash: transaction.completionTxHash,
+                contractAddress: transaction.deployedContractAddress
             });
         } catch (blockchainError) {
             console.error('Blockchain error:', blockchainError);
@@ -231,6 +228,48 @@ exports.completeTransaction = async (req, res) => {
     } catch (error) {
         console.error('Server error:', error);
         res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+};
+
+// POST /api/transactions/:id/purchase
+exports.purchaseByTransactionId = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const buyerId = req.user.userId;
+
+        const transaction = await Transaction.findById(id)
+            .populate('seller', 'blockchainAddress username')
+            .populate('buyer', 'blockchainAddress username');
+
+        if (!transaction) return res.status(404).json({ message: 'Transaction not found' });
+        if (transaction.buyer._id.toString() !== buyerId) return res.status(403).json({ message: 'Unauthorized' });
+        if (transaction.status !== 'approved' && transaction.status !== 'government_review') {
+            return res.status(400).json({ message: 'Transaction must be approved' });
+        }
+
+        const priceEther = transaction.price || transaction.totalAmount || 0;
+        const priceWei = web3.utils.toWei(priceEther.toString(), 'ether');
+
+        const deployment = await blockchainService.deployTradeContract({
+            seller: transaction.seller.blockchainAddress,
+            buyer: transaction.buyer.blockchainAddress,
+            units: transaction.units || transaction.unitsRequested || 0,
+            priceWei,
+            from: transaction.buyer.blockchainAddress
+        });
+
+        transaction.deployedContractAddress = deployment.contractAddress;
+        transaction.status = 'approved';
+        await transaction.save();
+
+        return res.status(200).json({
+            message: 'Trade contract deployed',
+            contractAddress: deployment.contractAddress,
+            transactionHash: deployment.transactionHash
+        });
+    } catch (err) {
+        console.error('purchaseByTransactionId error:', err);
+        return res.status(500).json({ message: 'Internal server error' });
     }
 };
 
@@ -251,7 +290,7 @@ exports.getPendingTransactions = async (req, res) => {
 
 exports.getUserTransactions = async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user.userId;
         const userRole = req.user.role;
 
         let query = {};

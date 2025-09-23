@@ -3,13 +3,17 @@ const mongoose = require('mongoose');
 const transactionSchema = new mongoose.Schema({
     seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     buyer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    electricityUnit: { type: mongoose.Schema.Types.ObjectId, ref: 'ElectricityUnit', required: true },
-    unitsRequested: { type: Number, required: true, min: 0 },
-    pricePerUnit: { type: Number, required: true, min: 0 },
-    totalAmount: { type: Number, required: true, min: 0 },
+    electricityUnit: { type: mongoose.Schema.Types.ObjectId, ref: 'ElectricityUnit' },
+    // For legacy electricityUnit-based flow
+    unitsRequested: { type: Number, min: 0 },
+    pricePerUnit: { type: Number, min: 0 },
+    totalAmount: { type: Number, min: 0 },
+    // For SellRequest-based flow
+    units: { type: Number, min: 0 },
+    price: { type: Number, min: 0 },
     status: { 
         type: String, 
-        enum: ['pending', 'government_review', 'approved', 'rejected', 'completed', 'cancelled'], 
+    enum: ['pending', 'government_review', 'approved', 'rejected', 'completed', 'cancelled', 'sold'], 
         default: 'pending' 
     },
     // Government verification

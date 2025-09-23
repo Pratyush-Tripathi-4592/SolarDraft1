@@ -12,8 +12,31 @@ class BlockchainService {
     initializeContracts() {
         try {
             // Load contract ABIs and addresses
-            this.electricityTokenABI = require('../build/contracts/ElectricityToken.json').abi;
-            this.transactionManagerABI = require('../build/contracts/TransactionManager.json').abi;
+            const fs = require('fs');
+            const path = require('path');
+
+            const etPath = path.join(__dirname, '..', 'build', 'contracts', 'ElectricityToken.json');
+            const tmPath = path.join(__dirname, '..', 'build', 'contracts', 'TransactionManager.json');
+            const tradePath = path.join(__dirname, '..', 'build', 'contracts', 'Trade.json');
+
+            if (fs.existsSync(etPath)) {
+                this.electricityTokenABI = require(etPath).abi;
+            } else {
+                console.warn('ElectricityToken artifact not found at', etPath);
+            }
+
+            if (fs.existsSync(tmPath)) {
+                this.transactionManagerABI = require(tmPath).abi;
+            } else {
+                console.warn('TransactionManager artifact not found at', tmPath);
+            }
+
+            if (fs.existsSync(tradePath)) {
+                this.tradeArtifact = require(tradePath);
+            } else {
+                console.warn('Trade artifact not found at', tradePath, '- deployment functions will be disabled until artifact is available');
+                this.tradeArtifact = null;
+            }
             
             this.electricityTokenAddress = process.env.ELECTRICITY_TOKEN_ADDRESS;
             this.transactionManagerAddress = process.env.TRANSACTION_MANAGER_ADDRESS;
@@ -36,34 +59,17 @@ class BlockchainService {
         }
     }
 
-    // Deploy new smart contract for a transaction
-    async deployTransactionContract(transactionData) {
+    // Deploy Trade.sol for a purchase
+    async deployTradeContract({ seller, buyer, units, priceWei, from }) {
         try {
-            const { seller, buyer, amount, price } = transactionData;
-            
-            // Contract bytecode for transaction-specific contract
-            const contractBytecode = this.getTransactionContractBytecode();
-            
-            const contract = new this.web3.eth.Contract(this.transactionManagerABI);
-            
-            const deployTx = contract.deploy({
-                data: contractBytecode,
-                arguments: [seller, buyer, amount, price]
-            });
-
-            const gasEstimate = await deployTx.estimateGas();
-            
-            const deployedContract = await deployTx.send({
-                from: process.env.DEPLOYER_ADDRESS,
-                gas: gasEstimate,
-                gasPrice: await this.web3.eth.getGasPrice()
-            });
-
-            return {
-                contractAddress: deployedContract.options.address,
-                transactionHash: deployedContract.transactionHash,
-                gasUsed: deployedContract.gasUsed
-            };
+            if (!this.tradeArtifact) throw new Error('Trade artifact not available');
+            const abi = this.tradeArtifact.abi;
+            const bytecode = this.tradeArtifact.bytecode;
+            const contract = new this.web3.eth.Contract(abi);
+            const deployTx = contract.deploy({ data: bytecode, arguments: [seller, buyer, units, priceWei] });
+            const gas = await deployTx.estimateGas({ from });
+            const tx = await deployTx.send({ from, gas, gasPrice: await this.web3.eth.getGasPrice() });
+            return { contractAddress: tx.options.address, transactionHash: tx.transactionHash };
         } catch (error) {
             console.error('Error deploying contract:', error);
             throw error;
@@ -218,12 +224,7 @@ class BlockchainService {
         }
     }
 
-    // Get transaction contract bytecode (simplified)
-    getTransactionContractBytecode() {
-        // This would contain the actual bytecode for deploying transaction-specific contracts
-        // For now, returning a placeholder
-        return "0x608060405234801561001057600080fd5b50..."; // Contract bytecode would go here
-    }
+    // getTransactionContractBytecode no longer needed as we use Trade.json
 
     // Validate blockchain address
     isValidAddress(address) {

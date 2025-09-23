@@ -9,6 +9,7 @@ const sellerRoutes = require('./routes/sellerRoutes');
 const buyerRoutes = require('./routes/buyerRoutes');
 const governmentRoutes = require('./routes/governmentRoutes');
 const blockchainRoutes = require('./routes/blockchainRoutes');
+const sellRequestRoutes = require('./routes/sellRequestRoutes');
 
 dotenv.config();
 
@@ -51,6 +52,7 @@ app.use('/api/seller', sellerRoutes);
 app.use('/api/buyer', buyerRoutes);
 app.use('/api/government', governmentRoutes);
 app.use('/api/blockchain', blockchainRoutes);
+app.use('/api/sell-requests', sellRequestRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -61,8 +63,8 @@ app.get('/health', (req, res) => {
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
+// 404 handler (no path argument so we don't rely on path-to-regexp)
+app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 

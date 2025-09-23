@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const governmentController = require('../controllers/governmentController');
-const auth = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 
 // Middleware to check if user is government
 const checkGovernmentRole = (req, res, next) => {
@@ -12,20 +12,20 @@ const checkGovernmentRole = (req, res, next) => {
 };
 
 // Transaction review routes
-router.get('/transactions/pending', auth, checkGovernmentRole, governmentController.getPendingTransactions);
-router.get('/transactions', auth, checkGovernmentRole, governmentController.getAllTransactions);
-router.get('/transactions/:transactionId', auth, checkGovernmentRole, governmentController.getTransactionForReview);
-router.post('/transactions/:transactionId/review', auth, checkGovernmentRole, governmentController.reviewTransaction);
+router.get('/transactions/pending', authenticateToken, checkGovernmentRole, governmentController.getPendingTransactions);
+router.get('/transactions', authenticateToken, checkGovernmentRole, governmentController.getAllTransactions);
+router.get('/transactions/:transactionId', authenticateToken, checkGovernmentRole, governmentController.getTransactionForReview);
+router.post('/transactions/:transactionId/review', authenticateToken, checkGovernmentRole, governmentController.reviewTransaction);
 
 // User management routes
-router.get('/users', auth, checkGovernmentRole, governmentController.getAllUsers);
-router.post('/users/:userId/status', auth, checkGovernmentRole, governmentController.updateUserStatus);
+router.get('/users', authenticateToken, checkGovernmentRole, governmentController.getAllUsers);
+router.post('/users/:userId/status', authenticateToken, checkGovernmentRole, governmentController.updateUserStatus);
 
 // Electricity unit verification routes
-router.get('/units/verification', auth, checkGovernmentRole, governmentController.getElectricityUnitsForVerification);
-router.post('/units/:unitId/verify', auth, checkGovernmentRole, governmentController.verifyElectricityUnit);
+router.get('/units/verification', authenticateToken, checkGovernmentRole, governmentController.getElectricityUnitsForVerification);
+router.post('/units/:unitId/verify', authenticateToken, checkGovernmentRole, governmentController.verifyElectricityUnit);
 
 // Government dashboard
-router.get('/stats', auth, checkGovernmentRole, governmentController.getGovernmentStats);
+router.get('/stats', authenticateToken, checkGovernmentRole, governmentController.getGovernmentStats);
 
 module.exports = router;

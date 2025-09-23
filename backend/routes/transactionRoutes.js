@@ -48,6 +48,8 @@ router.get('/abi/transactionManager', (req, res) => {
 router.post('/propose', authenticateToken, isSeller, transactionController.proposeTransaction);
 router.post('/verify', authenticateToken, isGovernment, transactionController.verifyTransaction);
 router.post('/complete', authenticateToken, isBuyer, transactionController.completeTransaction);
+// Buyer initiates purchase -> deploy Trade.sol and update transaction
+router.post('/:id/purchase', authenticateToken, isBuyer, transactionController.purchaseByTransactionId);
 
 // Frontend will call this after MetaMask finishes the on-chain transaction
 router.put('/:id/complete', authenticateToken, transactionController.markCompletedFromFrontend);

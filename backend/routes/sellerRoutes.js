@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const sellerController = require('../controllers/sellerController');
-const auth = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 
 // Middleware to check if user is a seller
 const checkSellerRole = (req, res, next) => {
@@ -12,17 +12,17 @@ const checkSellerRole = (req, res, next) => {
 };
 
 // Seller profile routes
-router.post('/register', auth, checkSellerRole, sellerController.registerSeller);
-router.get('/stats', auth, checkSellerRole, sellerController.getSellerStats);
+router.post('/register', authenticateToken, checkSellerRole, sellerController.registerSeller);
+router.get('/stats', authenticateToken, checkSellerRole, sellerController.getSellerStats);
 
 // Electricity unit management routes
-router.post('/units', auth, checkSellerRole, sellerController.createElectricityUnit);
-router.get('/units', auth, checkSellerRole, sellerController.getSellerUnits);
-router.put('/units/:unitId', auth, checkSellerRole, sellerController.updateElectricityUnit);
-router.delete('/units/:unitId', auth, checkSellerRole, sellerController.deleteElectricityUnit);
+router.post('/units', authenticateToken, checkSellerRole, sellerController.createElectricityUnit);
+router.get('/units', authenticateToken, checkSellerRole, sellerController.getSellerUnits);
+router.put('/units/:unitId', authenticateToken, checkSellerRole, sellerController.updateElectricityUnit);
+router.delete('/units/:unitId', authenticateToken, checkSellerRole, sellerController.deleteElectricityUnit);
 
 // Transaction management routes
-router.get('/transactions', auth, checkSellerRole, sellerController.getSellerTransactions);
-router.post('/transactions/:transactionId/respond', auth, checkSellerRole, sellerController.respondToTransactionRequest);
+router.get('/transactions', authenticateToken, checkSellerRole, sellerController.getSellerTransactions);
+router.post('/transactions/:transactionId/respond', authenticateToken, checkSellerRole, sellerController.respondToTransactionRequest);
 
 module.exports = router;

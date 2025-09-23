@@ -2,9 +2,9 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 
-// Generate JWT Token
-const generateToken = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, {
+// Generate JWT Token including role for RBAC middleware
+const generateToken = (userId, role) => {
+  return jwt.sign({ userId, role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || '24h'
   });
 };
@@ -34,8 +34,8 @@ exports.register = async (req, res) => {
         
         await user.save();
 
-        // Generate token
-        const token = generateToken(user._id);
+        // Generate token with role
+        const token = generateToken(user._id, user.role);
 
         res.status(201).json({ 
             message: 'User registered successfully',
@@ -69,8 +69,8 @@ exports.login = async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        // Generate token
-        const token = generateToken(user._id);
+        // Generate token with role
+        const token = generateToken(user._id, user.role);
 
         res.status(200).json({ 
             message: 'Login successful',
