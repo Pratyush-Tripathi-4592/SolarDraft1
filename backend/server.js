@@ -11,6 +11,7 @@ const governmentRoutes = require('./routes/governmentRoutes');
 const blockchainRoutes = require('./routes/blockchainRoutes');
 const sellRequestRoutes = require('./routes/sellRequestRoutes');
 
+
 dotenv.config();
 
 const app = express();
@@ -28,6 +29,44 @@ app.use(cors({
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
+//register middleware
+app.post("/register", (req, res) => {
+
+    // Form validation
+    const { errors, isValid } = validateRegisterInput(req.body)
+    
+    // Check validation
+    if(!isValid){
+        return res.status(400).json(errors)
+    }
+
+    User.findOne({email: req.body.email }).then(user => {
+        if(user){
+            return res.status(400).json({ email: "Email already exists"})
+        }else{
+            const newUser = new User({
+                name: req.body.name,
+                email: req.body.email,
+                password: req.body.password,
+                role: req.body.role
+            })
+
+            // Hash password before saving in database
+            bcrypt.genSalt(10, (err, salt) => {
+                bcrypt.hash(newUser.password, salt, (err, hash) => {
+                    if(err) throw err
+                    newUser.password = hash
+                    newUser
+                        .save()
+                        .then(user => res.json(user))
+                        .catch(err => console.log(err))
+                })
+            })
+        }
+    })
+})
+
+
 // Request logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
@@ -39,9 +78,9 @@ mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true, 
   useUnifiedTopology: true 
 })
-.then(() => console.log('✅ MongoDB connected successfully'))
+.then(() => console.log(' MongoDB connected successfully'))
 .catch(err => {
-  console.error('❌ MongoDB connection error:', err);
+  console.error(' MongoDB connection error:', err);
   process.exit(1);
 });
 
@@ -79,8 +118,8 @@ app.use((error, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on http://localhost:${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Health check: http://localhost:${PORT}/health`);
 });
 
   

@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+// Use model's bcryptjs-based hooks/methods instead of importing bcrypt here
 
 // Generate JWT Token including role for RBAC middleware
 const generateToken = (userId, role) => {
@@ -19,16 +19,13 @@ exports.register = async (req, res) => {
             return res.status(409).json({ message: 'User already exists' });
         }
 
-        // Hash password
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
-
         // Create new user with blockchain address
         const user = new User({ 
             username, 
             email, 
             role, 
-            passwordHash: hashedPassword,
+            // Store raw password in passwordHash; model pre-save hook will hash it using bcryptjs
+            passwordHash: password,
             blockchainAddress: req.body.blockchainAddress // Add blockchain address
         });
         
@@ -63,8 +60,8 @@ exports.login = async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        // Check password
-        const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+        // Check password via model method (uses bcryptjs under the hood)
+        const isPasswordValid = await user.comparePassword(password);
         if (!isPasswordValid) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
