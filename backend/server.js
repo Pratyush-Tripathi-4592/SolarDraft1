@@ -1,125 +1,168 @@
+// server.js
+
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const userRoutes = require('./routes/userRoutes');
-const transactionRoutes = require('./routes/transactionRoutes');
-const sellerRoutes = require('./routes/sellerRoutes');
-const buyerRoutes = require('./routes/buyerRoutes');
-const governmentRoutes = require('./routes/governmentRoutes');
-const blockchainRoutes = require('./routes/blockchainRoutes');
-const sellRequestRoutes = require('./routes/sellRequestRoutes');
-
+const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const bcrypt = require('bcryptjs');
 
 dotenv.config();
+
+// ========================
+//  Models
+// ========================
+
+const User = require('./models/User'); // Make sure this exists with fields: name, email, password, role
+
+// ========================
+//  Initialize App
+// ========================
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enhanced CORS configuration
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// ========================
+//  Middleware
+// ========================
 
-// Middleware
+// Security headers
+app.use(helmet());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100
+});
+app.use(limiter);
+
+// Parse cookies
+app.use(cookieParser());
+
+// CORS
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    credentials: true
+  })
+);
+
+// Body parser
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
-//register middleware
-app.post("/register", (req, res) => {
-
-    // Form validation
-    const { errors, isValid } = validateRegisterInput(req.body)
-    
-    // Check validation
-    if(!isValid){
-        return res.status(400).json(errors)
-    }
-
-    User.findOne({email: req.body.email }).then(user => {
-        if(user){
-            return res.status(400).json({ email: "Email already exists"})
-        }else{
-            const newUser = new User({
-                name: req.body.name,
-                email: req.body.email,
-                password: req.body.password,
-                role: req.body.role
-            })
-
-            // Hash password before saving in database
-            bcrypt.genSalt(10, (err, salt) => {
-                bcrypt.hash(newUser.password, salt, (err, hash) => {
-                    if(err) throw err
-                    newUser.password = hash
-                    newUser
-                        .save()
-                        .then(user => res.json(user))
-                        .catch(err => console.log(err))
-                })
-            })
-        }
-    })
-})
-
-
-// Request logging middleware
+// Request logging
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
-// MongoDB Connection with better error handling
-mongoose.connect(process.env.MONGODB_URI, { 
-  useNewUrlParser: true, 
-  useUnifiedTopology: true 
-})
-.then(() => console.log(' MongoDB connected successfully'))
-.catch(err => {
-  console.error(' MongoDB connection error:', err);
-  process.exit(1);
+// ========================
+//  Simple validator
+// ========================
+function validateRegisterInput(data) {
+  const errors = {};
+  if (!data.name) errors.name = 'Name is required';
+  if (!data.email) errors.email = 'Email is required';
+  if (!data.password) errors.password = 'Password is required';
+  const isValid = Object.keys(errors).length === 0;
+  return { errors, isValid };
+}
+
+// ========================
+//  Routes
+// ========================
+
+// Root route
+app.get('/', (req, res) => {
+  res.send('API is running...');
 });
 
-// Routes
-app.use('/api/users', userRoutes);
-app.use('/api/transactions', transactionRoutes);
-app.use('/api/seller', sellerRoutes);
-app.use('/api/buyer', buyerRoutes);
-app.use('/api/government', governmentRoutes);
-app.use('/api/blockchain', blockchainRoutes);
-app.use('/api/sell-requests', sellRequestRoutes);
-
-// Health check endpoint
+// Health check
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
+  res.status(200).json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
 });
 
-// 404 handler (no path argument so we don't rely on path-to-regexp)
+// Register route
+app.post('/register', async (req, res) => {
+  const { errors, isValid } = validateRegisterInput(req.body);
+
+  if (!isValid) return res.status(400).json(errors);
+
+  try {
+    const existingUser = await User.findOne({ email: req.body.email });
+    if (existingUser) return res.status(400).json({ email: 'Email already exists' });
+
+    const newUser = new User({
+      name: req.body.name,
+      email: req.body.email,
+      password: req.body.password,
+      role: req.body.role || 'user'
+    });
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    newUser.password = await bcrypt.hash(newUser.password, salt);
+
+    await newUser.save();
+    res.json({ success: true, user: newUser });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ========================
+//  API Routes
+// ========================
+// Example: replace with your existing route files
+// Make sure each route exports an express.Router()
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/transactions', require('./routes/transactionRoutes'));
+app.use('/api/seller', require('./routes/sellerRoutes'));
+app.use('/api/buyer', require('./routes/buyerRoutes'));
+app.use('/api/government', require('./routes/governmentRoutes'));
+app.use('/api/blockchain', require('./routes/blockchainRoutes'));
+app.use('/api/sell-requests', require('./routes/sellRequestRoutes'));
+
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
 // Global error handler
-app.use((error, req, res, next) => {
-  console.error('Global error handler:', error);
-  res.status(error.status || 500).json({
-    message: error.message || 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+app.use((err, req, res, next) => {
+  console.error('Global error:', err);
+  res.status(err.status || 500).json({
+    message: err.message || 'Internal server error',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
 
-// Start server
+// ========================
+//  Database Connection
+// ========================
+
+mongoose
+  .connect(process.env.MONGODB_URI, {})
+  .then(() => console.log('MongoDB connected successfully'))
+  .catch((err) => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
+  });
+
+// ========================
+//  Start Server
+// ========================
+
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
 });
-
-  

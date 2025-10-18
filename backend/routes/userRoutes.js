@@ -1,14 +1,17 @@
-// backend/routes/userRoutes.js
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
-const { authenticateToken } = require('../middleware/auth');
 
-// Public routes
-router.post('/register', userController.register);
+
+router.post(
+  '/register',
+  userController.validateRegistration, // array of middleware
+  userController.registerUser          // function handler
+);
+
 router.post('/login', userController.login);
-
-// Protected routes
-router.get('/profile', authenticateToken, userController.getProfile);
+router.post('/logout', userController.logout);
+router.get('/profile', userController.getProfile);
+router.put('/profile', userController.updateProfile);
 
 module.exports = router;
