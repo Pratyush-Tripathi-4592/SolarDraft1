@@ -49,25 +49,24 @@ exports.registerUser = async (req, res, next) => {
       throw ApiError.badRequest('Email already registered');
     }
 
-    // Create user
-    const newUser = await User.create({ username, email, password });
+    // Create user using virtual password setter which will hash on save
+    const newUser = new User({ username, email });
+    newUser.password = password; // virtual setter assigns to passwordHash for pre-save
+    // role will default to 'buyer' if not provided
+    if (req.body.role) newUser.role = req.body.role;
+    await newUser.save();
 
     // Generate token
     const token = generateToken(newUser._id, newUser.role);
 
-    res.status(201).json({
-      success: true,
-      message: 'User registered successfully',
-      data: {
-        user: {
-          id: newUser._id,
-          username: newUser.username,
-          email: newUser.email,
-          role: newUser.role,
-        },
-        token,
-      },
-    });
+    const userResponse = {
+      id: newUser._id,
+      username: newUser.username,
+      email: newUser.email,
+      role: newUser.role,
+    };
+
+    res.status(201).json({ success: true, message: 'User registered successfully', data: { user: userResponse, token } });
   } catch (error) {
     next(error);
   }

@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
-    role: { type: String, enum: ['seller', 'buyer', 'government'], required: true },
+    role: { type: String, enum: ['seller', 'buyer', 'government'], required: true, default: 'buyer' },
     passwordHash: { type: String, required: true },
     blockchainAddress: { type: String, unique: true, sparse: true },
     // Seller specific fields
@@ -31,6 +31,13 @@ userSchema.pre('save', async function(next) {
     }
     next();
 });
+
+// Virtual field for plain password to make controllers simpler
+userSchema.virtual('password')
+    .set(function(pwd) {
+        // store plain password into passwordHash temporarily; pre-save will hash it
+        this.passwordHash = pwd;
+    });
 
 userSchema.methods.comparePassword = async function(candidatePassword) {
     return bcrypt.compare(candidatePassword, this.passwordHash);

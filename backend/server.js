@@ -43,12 +43,22 @@ app.use(limiter);
 app.use(cookieParser());
 
 // CORS
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-    credentials: true
-  })
-);
+// CORS: allow multiple origins via comma-separated env var, and respond to preflight
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:5173').split(',').map(s => s.trim());
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  }
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 // Body parser
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -159,10 +169,39 @@ mongoose
   });
 
 // ========================
-//  Start Server
+//  Start Server (with port fallback)
 // ========================
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
-});
+function startServer(preferredPort, maxRetries = 10) {
+  let port = Number(preferredPort) || 5000;
+
+  const tryListen = () => {
+    const srv = app.listen(port);
+
+    srv.on('listening', () => {
+      console.log(`Server running on http://localhost:${port}`);
+      console.log(`Health check: http://localhost:${port}/health`);
+    });
+
+    srv.on('error', (err) => {
+      if (err && err.code === 'EADDRINUSE') {
+        console.warn(`Port ${port} in use. Trying port ${port + 1}...`);
+        if (maxRetries > 0) {
+          port += 1;
+          maxRetries -= 1;
+          setTimeout(tryListen, 200);
+        } else {
+          console.error('Failed to bind to a port after multiple attempts. Exiting.');
+          process.exit(1);
+        }
+      } else {
+        console.error('Server error:', err);
+        process.exit(1);
+      }
+    });
+  };
+
+  tryListen();
+}
+
+startServer(process.env.PORT || PORT);
