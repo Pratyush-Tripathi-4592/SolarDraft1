@@ -35,7 +35,7 @@ exports.getTransactionStats = async (req, res) => {
 exports.proposeTransaction = async (req, res) => {
     try {
         const { buyerId, amount, price } = req.body;
-        const sellerId = req.user.userId;
+        const sellerId = req.user._id.toString();
 
         // Input validation
         if (!buyerId || !amount || !price) {
@@ -70,32 +70,13 @@ exports.proposeTransaction = async (req, res) => {
             timestamp: new Date()
         });
 
-        // Interact with smart contract
-        try {
-            const tx = await transactionManagerContract.methods.proposeTransaction(
-                buyer.blockchainAddress,
-                web3.utils.toWei(amount.toString(), 'ether'),
-                web3.utils.toWei(price.toString(), 'ether')
-            ).send({
-                from: seller.blockchainAddress,
-                gas: 200000
-            });
+rr        // Placeholder: Save transaction off-chain until blockchain integration is wired
+        await transaction.save();
 
-            transaction.blockchainTxHash = tx.transactionHash;
-            await transaction.save();
-
-            res.status(201).json({
-                message: 'Transaction proposed successfully',
-                transactionId: transaction._id,
-                blockchainTxHash: tx.transactionHash
-            });
-        } catch (blockchainError) {
-            console.error('Blockchain error:', blockchainError);
-            res.status(500).json({
-                message: 'Error while processing blockchain transaction',
-                error: blockchainError.message
-            });
-        }
+        res.status(201).json({
+            message: 'Transaction proposed successfully (off-chain placeholder)',
+            transactionId: transaction._id
+        });
     } catch (error) {
         console.error('Server error:', error);
         res.status(500).json({ message: 'Internal server error', error: error.message });
@@ -124,39 +105,16 @@ exports.verifyTransaction = async (req, res) => {
             return res.status(400).json({ message: 'Transaction is not in pending state' });
         }
 
-        // Verify on blockchain
-        try {
-            const tx = await transactionManagerContract.methods
-                .verifyTransaction(
-                    transaction.blockchainTxHash,
-                    approved
-                )
-                .send({
-                    from: process.env.GOVERNMENT_ADDRESS,
-                    gas: 200000
-                });
+        // Placeholder: Update status off-chain until blockchain verification is wired
+        transaction.governmentVerified = approved;
+        transaction.status = approved ? 'approved' : 'rejected';
+        transaction.verificationTime = new Date();
+        await transaction.save();
 
-            // Update transaction status
-            transaction.governmentVerified = approved;
-            transaction.status = approved ? 'approved' : 'rejected';
-            transaction.verificationTime = new Date();
-            transaction.verificationTxHash = tx.transactionHash;
-            await transaction.save();
-
-            // Notify users (you could implement WebSocket notifications here)
-            
-            res.status(200).json({
-                message: `Transaction ${approved ? 'approved' : 'rejected'} successfully`,
-                transactionId: transaction._id,
-                blockchainTxHash: tx.transactionHash
-            });
-        } catch (blockchainError) {
-            console.error('Blockchain error:', blockchainError);
-            res.status(500).json({
-                message: 'Error while processing blockchain verification',
-                error: blockchainError.message
-            });
-        }
+        res.status(200).json({
+            message: `Transaction ${approved ? 'approved' : 'rejected'} successfully (off-chain placeholder)`,
+            transactionId: transaction._id
+        });
     } catch (error) {
         console.error('Server error:', error);
         res.status(500).json({ message: 'Internal server error', error: error.message });
@@ -166,7 +124,7 @@ exports.verifyTransaction = async (req, res) => {
 exports.completeTransaction = async (req, res) => {
     try {
         const { transactionId } = req.body;
-        const buyerId = req.user.userId;
+        const buyerId = req.user._id.toString();
 
         // Input validation
         if (!transactionId) {
@@ -235,7 +193,7 @@ exports.completeTransaction = async (req, res) => {
 exports.purchaseByTransactionId = async (req, res) => {
     try {
         const { id } = req.params;
-        const buyerId = req.user.userId;
+        const buyerId = req.user._id.toString();
 
         const transaction = await Transaction.findById(id)
             .populate('seller', 'blockchainAddress username')
@@ -290,7 +248,7 @@ exports.getPendingTransactions = async (req, res) => {
 
 exports.getUserTransactions = async (req, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user._id.toString();
         const userRole = req.user.role;
 
         let query = {};

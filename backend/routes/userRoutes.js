@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
-
+const { authenticateToken } = require('../middleware/auth');
 
 router.post(
   '/register',
@@ -10,8 +10,11 @@ router.post(
 );
 
 router.post('/login', userController.login);
-router.post('/logout', userController.logout);
-router.get('/profile', userController.getProfile);
-router.put('/profile', userController.updateProfile);
+router.post('/logout', authenticateToken, userController.logout);
+router.get('/profile', authenticateToken, userController.getProfile);
+router.put('/profile', authenticateToken, userController.updateProfile);
+
+// List users with optional role filter: /api/users?role=buyer
+router.get('/', authenticateToken, userController.listUsers);
 
 module.exports = router;

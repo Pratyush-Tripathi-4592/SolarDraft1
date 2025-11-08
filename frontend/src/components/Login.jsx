@@ -1,21 +1,25 @@
 // frontend/src/components/Login.js
 import React, { useState } from 'react';
-import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { authAPI } from '@/services/api';
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
+    const navigate = useNavigate();
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://localhost:5000/api/users/login', {
-                email,
-                password
-            });
-            alert(response.data.message);
+            const response = await authAPI.login({ email, password });
+            const token = response.data?.data?.token || response.data?.token;
+            if (token) localStorage.setItem('token', token);
+            alert(response.data.message || 'Logged in');
+            navigate('/dashboard');
         } catch (error) {
-            alert(error.response.data.message);
+            const msg = error?.response?.data?.message || error.message || 'Login failed';
+            alert(msg);
         }
     };
 

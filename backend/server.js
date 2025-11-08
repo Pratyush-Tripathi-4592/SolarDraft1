@@ -1,4 +1,3 @@
-// server.js
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -12,67 +11,69 @@ const bcrypt = require('bcryptjs');
 
 dotenv.config();
 
-// ========================
-//  Models
-// ========================
 
-const User = require('./models/User'); // Make sure this exists with fields: name, email, password, role
+const REQUIRED_ENVS = ['MONGODB_URI', 'JWT_SECRET'];
+const missing = REQUIRED_ENVS.filter((k) => !process.env[k] || String(process.env[k]).trim() === '');
+if (missing.length) {
 
-// ========================
-//  Initialize App
-// ========================
+  console.error(`Missing required environment variables: ${missing.join(', ')}`);
+  process.exit(1);
+}
+
+
+
+const User = require('./models/User');
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ========================
-//  Middleware
-// ========================
 
-// Security headers
 app.use(helmet());
 
-// Rate limiting
+
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 100
 });
 app.use(limiter);
 
-// Parse cookies
+
 app.use(cookieParser());
 
-// CORS
-// CORS: allow multiple origins via comma-separated env var, and respond to preflight
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:5173').split(',').map(s => s.trim());
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  }
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-  next();
-});
 
-// Body parser
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:5173')
+  .split(',')
+  .map((s) => s.trim());
+app.use(
+  cors({
+    origin: function(origin, callback) {
+      if (!origin) return callback(null, true);
+      const ok = allowedOrigins.includes(origin);
+      callback(ok ? null : new Error('Not allowed by CORS'), ok ? true : undefined);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  })
+);
+
+
+app.options('*', cors());
+
+
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request logging
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
 
-// ========================
-//  Simple validator
-// ========================
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    next();
+  });
+}
+
+
 function validateRegisterInput(data) {
   const errors = {};
   if (!data.name) errors.name = 'Name is required';
@@ -82,16 +83,12 @@ function validateRegisterInput(data) {
   return { errors, isValid };
 }
 
-// ========================
-//  Routes
-// ========================
 
-// Root route
 app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
-// Health check
+
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
@@ -100,40 +97,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Register route
-app.post('/register', async (req, res) => {
-  const { errors, isValid } = validateRegisterInput(req.body);
 
-  if (!isValid) return res.status(400).json(errors);
-
-  try {
-    const existingUser = await User.findOne({ email: req.body.email });
-    if (existingUser) return res.status(400).json({ email: 'Email already exists' });
-
-    const newUser = new User({
-      name: req.body.name,
-      email: req.body.email,
-      password: req.body.password,
-      role: req.body.role || 'user'
-    });
-
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    newUser.password = await bcrypt.hash(newUser.password, salt);
-
-    await newUser.save();
-    res.json({ success: true, user: newUser });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// ========================
-//  API Routes
-// ========================
-// Example: replace with your existing route files
-// Make sure each route exports an express.Router()
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/transactions', require('./routes/transactionRoutes'));
 app.use('/api/seller', require('./routes/sellerRoutes'));
@@ -142,23 +106,20 @@ app.use('/api/government', require('./routes/governmentRoutes'));
 app.use('/api/blockchain', require('./routes/blockchainRoutes'));
 app.use('/api/sell-requests', require('./routes/sellRequestRoutes'));
 
-// 404 handler
+
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// Global error handler
+
 app.use((err, req, res, next) => {
   console.error('Global error:', err);
-  res.status(err.status || 500).json({
+  res.status(err.statusCode || err.status || 500).json({
     message: err.message || 'Internal server error',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
 
-// ========================
-//  Database Connection
-// ========================
 
 mongoose
   .connect(process.env.MONGODB_URI, {})

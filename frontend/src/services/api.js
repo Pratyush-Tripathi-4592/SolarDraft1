@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
 
 // Create axios instance
 const api = axios.create({
@@ -51,6 +51,10 @@ export const transactionAPI = {
   create: (transactionData) => api.post('/transactions', transactionData),
   update: (id, transactionData) => api.put(`/transactions/${id}`, transactionData),
   delete: (id) => api.delete(`/transactions/${id}`),
+  getStats: () => api.get('/transactions/stats'),
+  propose: (data) => api.post('/transactions/propose', data),
+  verify: (data) => api.post('/transactions/verify', data),
+  getPending: () => api.get('/transactions/pending'),
 };
 
 export default api; 

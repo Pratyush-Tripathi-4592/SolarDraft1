@@ -1,6 +1,6 @@
 // frontend/src/components/CompleteTransaction.js
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { useWeb3 } from './Web3Context';
 
 const CompleteTransaction = () => {
@@ -25,8 +25,8 @@ const CompleteTransaction = () => {
             }
 
             // Step 1: Get transaction details from backend
-            const transactionRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/transactions/${transactionId}`);
-            const txData = transactionRes.data;
+            const transactionRes = await api.get(`/transactions/${transactionId}`);
+            const txData = transactionRes.data.data || transactionRes.data;
             const { amount, price, seller, status } = txData;
 
             // Validation checks (backend stores statuses lowercased sometimes)
@@ -39,7 +39,7 @@ const CompleteTransaction = () => {
             const totalPriceWei = web3.utils.toWei(totalEth.toString(), 'ether');
 
             // Step 2: Fetch TransactionManager ABI and call completeTransaction (MetaMask popup)
-            const tmAbiRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/transactions/abi/transactionManager?contract=TransactionManager`);
+            const tmAbiRes = await api.get('/transactions/abi/transactionManager?contract=TransactionManager');
             const tmAbi = tmAbiRes.data.abi;
             const tmAddress = import.meta.env.VITE_TRANSACTION_MANAGER_ADDRESS;
             const tmContract = loadContract(tmAbi, tmAddress);
@@ -51,7 +51,7 @@ const CompleteTransaction = () => {
 
             // After completion, optionally deploy an ElectricityToken contract (example flow)
             // Fetch ElectricityToken ABI+bytecode from backend
-            const etRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/transactions/abi/transactionManager?contract=ElectricityToken`);
+            const etRes = await api.get('/transactions/abi/transactionManager?contract=ElectricityToken');
             const etAbi = etRes.data.abi;
             const etBytecode = etRes.data.bytecode;
 
@@ -67,11 +67,9 @@ const CompleteTransaction = () => {
             }
 
             // Step 3: Notify backend that transaction completed on-chain and provide deployed contract address
-            await axios.put(`${import.meta.env.VITE_API_BASE_URL}/transactions/${transactionId}/complete`, {
+            await api.put(`/transactions/${transactionId}/complete`, {
                 transactionHash: receipt.transactionHash,
                 deployedContractAddress: deployedAddress
-            }, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
 
             setSuccess(`Transaction completed successfully! Tx Hash: ${receipt.transactionHash}${deployedAddress ? `, Deployed contract: ${deployedAddress}` : ''}`);

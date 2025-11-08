@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api, { transactionAPI } from '../services/api';
 
 const ProposeTransaction = ({ onSuccess }) => {
     const [formData, setFormData] = useState({
@@ -15,10 +15,8 @@ const ProposeTransaction = ({ onSuccess }) => {
     useEffect(() => {
         const fetchBuyers = async () => {
             try {
-                const response = await axios.get('http://localhost:5000/api/users/buyers', {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                });
-                setBuyers(response.data);
+                const response = await api.get('/users?role=buyer');
+                setBuyers(response.data.data || response.data);
             } catch (error) {
                 console.error('Error fetching buyers:', error);
                 setError('Failed to load buyers list');
@@ -40,13 +38,7 @@ const ProposeTransaction = ({ onSuccess }) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.post(
-                'http://localhost:5000/api/transactions/propose',
-                formData,
-                {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                }
-            );
+            const response = await transactionAPI.propose(formData);
             setSuccess(true);
             setFormData({ buyerId: '', amount: '', price: '' });
             if (onSuccess) onSuccess();

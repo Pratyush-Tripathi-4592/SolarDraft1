@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 interface ElectricityUnit {
   _id: string;
@@ -35,11 +35,8 @@ const BuyerDashboard: React.FC = () => {
 
   const fetchAvailableUnits = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/buyer/units', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAvailableUnits(response.data);
+      const response = await api.get('/buyer/units');
+      setAvailableUnits(response.data.data || response.data);
     } catch (error) {
       console.error('Error fetching units:', error);
     }
@@ -47,11 +44,8 @@ const BuyerDashboard: React.FC = () => {
 
   const fetchMyTransactions = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/buyer/transactions', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMyTransactions(response.data);
+      const response = await api.get('/buyer/transactions');
+      setMyTransactions(response.data.data || response.data);
     } catch (error) {
       console.error('Error fetching transactions:', error);
     }
@@ -62,13 +56,10 @@ const BuyerDashboard: React.FC = () => {
     if (!selectedUnit) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('/api/buyer/purchase-request', {
+      await api.post('/buyer/purchase-request', {
         electricityUnitId: selectedUnit._id,
         unitsRequested: parseInt(purchaseAmount),
         buyerNotes: 'Purchase request from buyer dashboard'
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
       
       setShowPurchaseForm(false);
@@ -85,12 +76,8 @@ const BuyerDashboard: React.FC = () => {
   const handleCompleteTransaction = async (transactionId: string) => {
     try {
       // Generate MetaMask transaction data
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`/api/blockchain/transaction/${transactionId}/metamask`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const { transactionData } = response.data;
+      const response = await api.get(`/blockchain/transaction/${transactionId}/metamask`);
+      const { transactionData } = response.data.data || response.data;
 
       // Check if MetaMask is available
       if (typeof window.ethereum !== 'undefined') {
@@ -105,11 +92,9 @@ const BuyerDashboard: React.FC = () => {
           });
 
           // Confirm transaction completion
-          await axios.post(`/api/blockchain/transaction/${transactionId}/confirm`, {
+          await api.post(`/blockchain/transaction/${transactionId}/confirm`, {
             txHash: txHash,
             contractAddress: transactionData.to
-          }, {
-            headers: { Authorization: `Bearer ${token}` }
           });
 
           alert('Transaction completed successfully!');

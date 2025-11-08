@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 interface Transaction {
   _id: string;
@@ -39,11 +39,8 @@ const GovernmentDashboard: React.FC = () => {
 
   const fetchPendingTransactions = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/government/transactions/pending', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setPendingTransactions(response.data);
+      const response = await api.get('/government/transactions/pending');
+      setPendingTransactions(response.data.data || response.data);
     } catch (error) {
       console.error('Error fetching pending transactions:', error);
     }
@@ -51,11 +48,8 @@ const GovernmentDashboard: React.FC = () => {
 
   const fetchAllTransactions = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/government/transactions', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAllTransactions(response.data.transactions);
+      const response = await api.get('/government/transactions');
+      setAllTransactions(response.data.data?.transactions || response.data.data || response.data.transactions || response.data);
     } catch (error) {
       console.error('Error fetching all transactions:', error);
     }
@@ -63,11 +57,8 @@ const GovernmentDashboard: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/government/users', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUsers(response.data.users);
+      const response = await api.get('/government/users');
+      setUsers(response.data.data || response.data.users || response.data);
     } catch (error) {
       console.error('Error fetching users:', error);
     }
@@ -75,13 +66,7 @@ const GovernmentDashboard: React.FC = () => {
 
   const handleReviewTransaction = async (transactionId: string, action: 'approve' | 'reject') => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/government/transactions/${transactionId}/review`, {
-        action,
-        verificationNotes
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/government/transactions/${transactionId}/review`, { action, verificationNotes });
       
       setShowTransactionModal(false);
       setSelectedTransaction(null);
@@ -97,12 +82,9 @@ const GovernmentDashboard: React.FC = () => {
 
   const handleUserStatusChange = async (userId: string, isActive: boolean) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/government/users/${userId}/status`, {
+      await api.post(`/government/users/${userId}/status`, {
         isActive,
         reason: isActive ? 'Account activated by government' : 'Account suspended by government'
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
       
       fetchUsers();

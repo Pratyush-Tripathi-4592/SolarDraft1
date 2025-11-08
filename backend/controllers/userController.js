@@ -209,3 +209,19 @@ exports.updateProfile = async (req, res, next) => {
     next(error);
   }
 };
+
+// ==============================
+// List users (optional role filter)
+// ==============================
+exports.listUsers = async (req, res, next) => {
+  try {
+    const role = req.query.role;
+    const filter = {};
+    if (role) filter.role = role;
+
+    const users = await User.find(filter).select('-passwordHash -__v -failedLoginAttempts');
+    res.status(200).json({ success: true, data: users });
+  } catch (error) {
+    next(error);
+  }
+};

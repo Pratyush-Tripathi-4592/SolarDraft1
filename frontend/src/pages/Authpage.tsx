@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { authAPI } from '../services/api';
 import React, { useState } from 'react';
 import { Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -129,20 +129,14 @@ const AuthPage = () => {
     const password = formData.get('password') as string;
 
     try {
-      const response = await axios.post('http://localhost:5000/api/user/login', {
-        email,
-        password,
-      });
-      
-      // Handle successful login
-      console.log('Login successful:', response.data);
-      
-      // Store token if provided
-      if (response.data.token) {
-        localStorage.setItem('authToken', response.data.token);
+      const response = await authAPI.login({ email, password });
+      const data = response.data.data || response.data;
+      if (data.token) {
+        localStorage.setItem('token', data.token);
       }
-      
-      // Navigate to profile page
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
       navigate('/profile');
     } catch (error: any) {
       console.error('Login failed:', error);
@@ -174,21 +168,14 @@ const AuthPage = () => {
     }
 
     try {
-      const response = await axios.post('http://localhost:5000/api/user/signup', {
-        fullName,
-        email,
-        password,
-      });
-      
-      // Handle successful signup
-      console.log('Signup successful:', response.data);
-      
-      // Store token if provided
-      if (response.data.token) {
-        localStorage.setItem('authToken', response.data.token);
+      const payload = { username: fullName, email, password };
+      const response = await authAPI.register(payload);
+      const data = response.data.data || response.data;
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
         navigate('/profile');
       } else {
-        // If no auto-login, switch to login form
         setIsLogin(true);
         setError('Account created successfully! Please log in.');
       }

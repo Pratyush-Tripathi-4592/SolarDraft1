@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api, { transactionAPI } from '../services/api';
 
 const VerifyTransaction = ({ onSuccess }) => {
     const [pendingTransactions, setPendingTransactions] = useState([]);
@@ -15,13 +15,8 @@ const VerifyTransaction = ({ onSuccess }) => {
 
     const fetchPendingTransactions = async () => {
         try {
-            const response = await axios.get(
-                'http://localhost:5000/api/transactions/pending',
-                {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                }
-            );
-            setPendingTransactions(response.data);
+            const response = await transactionAPI.getPending();
+            setPendingTransactions(response.data.data || response.data);
         } catch (error) {
             console.error('Error fetching pending transactions:', error);
             setError('Failed to load pending transactions');
@@ -33,16 +28,7 @@ const VerifyTransaction = ({ onSuccess }) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.post(
-                'http://localhost:5000/api/transactions/verify',
-                {
-                    transactionId: selectedTransaction,
-                    approved
-                },
-                {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                }
-            );
+            const response = await transactionAPI.verify({ transactionId: selectedTransaction, approved });
             setSuccess(true);
             setSelectedTransaction('');
             fetchPendingTransactions();

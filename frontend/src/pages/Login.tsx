@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import { authAPI } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 const Login: React.FC = () => {
@@ -16,18 +16,20 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const endpoint = isLogin ? '/api/users/login' : '/api/users/register';
-      const payload = isLogin 
+      const payload = isLogin
         ? { email: formData.email, password: formData.password }
         : formData;
 
-      const response = await axios.post(`http://localhost:5000${endpoint}`, payload);
-      
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      const response = isLogin
+        ? await authAPI.login(payload)
+        : await authAPI.register(payload);
+
+      const data = response.data.data || response.data;
+      if (data.token) localStorage.setItem('token', data.token);
+      if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
       
       // Redirect based on role
-      const userRole = response.data.user.role;
+  const userRole = data.user?.role;
       switch (userRole) {
         case 'seller':
           navigate('/seller-dashboard');

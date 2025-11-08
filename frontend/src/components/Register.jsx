@@ -1,6 +1,7 @@
 // frontend/src/components/Register.js
 import React, { useState } from 'react';
-import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { authAPI } from '@/services/api';
 
 const Register = () => {
     const [username, setUsername] = useState('');
@@ -8,18 +9,21 @@ const Register = () => {
     const [role, setRole] = useState('buyer');
     const [password, setPassword] = useState('');
 
+    const navigate = useNavigate();
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://localhost:5000/api/users/register', {
-                username,
-                email,
-                role,
-                password
-            });
-            alert(response.data.message);
+            const response = await authAPI.register({ username, email, role, password });
+            const token = response.data?.data?.token;
+            if (token) {
+                localStorage.setItem('token', token);
+            }
+            alert(response.data.message || 'Registered');
+            navigate('/dashboard');
         } catch (error) {
-            alert(error.response.data.message);
+            const msg = error?.response?.data?.message || error.message || 'Registration failed';
+            alert(msg);
         }
     };
 
@@ -31,7 +35,7 @@ const Register = () => {
                 <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 <select value={role} onChange={(e) => setRole(e.target.value)}>
                     <option value="buyer">Buyer</option>
-                    <option value="owner">Seller</option>
+                    <option value="seller">Seller</option>
                     <option value="government">Government</option>
                 </select>
                 <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />

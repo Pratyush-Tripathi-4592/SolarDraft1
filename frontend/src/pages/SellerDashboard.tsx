@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 interface ElectricityUnit {
   _id: string;
@@ -38,11 +38,8 @@ const SellerDashboard: React.FC = () => {
 
   const fetchUnits = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/seller/units', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUnits(response.data);
+      const response = await api.get('/seller/units');
+      setUnits(response.data.data || response.data);
     } catch (error) {
       console.error('Error fetching units:', error);
     }
@@ -50,11 +47,8 @@ const SellerDashboard: React.FC = () => {
 
   const fetchTransactions = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/seller/transactions', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setTransactions(response.data);
+      const response = await api.get('/seller/transactions');
+      setTransactions(response.data.data || response.data);
     } catch (error) {
       console.error('Error fetching transactions:', error);
     }
@@ -63,10 +57,7 @@ const SellerDashboard: React.FC = () => {
   const handleAddUnit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('/api/seller/units', newUnit, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post('/seller/units', newUnit);
       setNewUnit({
         unitsAvailable: '',
         pricePerUnit: '',
@@ -83,11 +74,7 @@ const SellerDashboard: React.FC = () => {
 
   const handleRespondToTransaction = async (transactionId: string, action: string) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/seller/transactions/${transactionId}/respond`, 
-        { action, sellerNotes: `${action}ed by seller` },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post(`/seller/transactions/${transactionId}/respond`, { action, sellerNotes: `${action}ed by seller` });
       fetchTransactions();
     } catch (error) {
       console.error('Error responding to transaction:', error);
