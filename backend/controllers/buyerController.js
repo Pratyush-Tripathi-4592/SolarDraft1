@@ -22,7 +22,7 @@ exports.browseElectricityUnits = async (req, res) => {
         if (minPrice || maxPrice) {
             query.pricePerUnit = {};
             if (minPrice) query.pricePerUnit.$gte = parseFloat(minPrice);
-            if (maxPrice) query.pricePerUnit.$lte = parseFloat(maxPrice);
+            if (maxPrice) query.pricePerUnit.$lte = parseFloat(maxPrice);  
         }
         if (location) {
             query.location = { $regex: location, $options: 'i' };

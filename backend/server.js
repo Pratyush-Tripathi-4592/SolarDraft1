@@ -9,6 +9,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 
+
 dotenv.config();
 
 
@@ -45,21 +46,13 @@ app.use(cookieParser());
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:5173')
   .split(',')
   .map((s) => s.trim());
-app.use(
-  cors({
-    origin: function(origin, callback) {
-      if (!origin) return callback(null, true);
-      const ok = allowedOrigins.includes(origin);
-      callback(ok ? null : new Error('Not allowed by CORS'), ok ? true : undefined);
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-  })
-);
+app.use(cors());
 
 
-app.options('*', cors());
+// NOTE: preflight handled by the CORS middleware above. Avoid using app.options with '*' because
+// some path parsers (path-to-regexp) treat '*' specially and can throw a PathError in certain
+// dependency versions. The cors() middleware registered with app.use(...) will respond to
+// OPTIONS requests for allowed routes.
 
 
 app.use(bodyParser.json({ limit: '10mb' }));

@@ -1,4 +1,4 @@
-import { authAPI } from '../services/api';
+import api from '../services/api';
 import React, { useState } from 'react';
 import { Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -129,7 +129,7 @@ const AuthPage = () => {
     const password = formData.get('password') as string;
 
     try {
-      const response = await authAPI.login({ email, password });
+      const response = await api.post('/api/users/login', { email, password });
       const data = response.data.data || response.data;
       if (data.token) {
         localStorage.setItem('token', data.token);
@@ -169,7 +169,7 @@ const AuthPage = () => {
 
     try {
       const payload = { username: fullName, email, password };
-      const response = await authAPI.register(payload);
+      const response = await api.post('/api/users/register', payload);
       const data = response.data.data || response.data;
       if (data.token) {
         localStorage.setItem('token', data.token);
